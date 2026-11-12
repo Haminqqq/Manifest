@@ -1,0 +1,894 @@
+<title>晨光觀想室</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one column app, top tab bar; the session view is a horizon where the wish "rises" like the sun */
+:root {
+  --bg: #eef1ec;        /* pale dawn sage */
+  --surface: #f8faf6;
+  --line: #d3dbd2;
+  --fg: #1f2e2a;        /* deep pine */
+  --muted: #5d6e68;
+  --accent: #c8701f;    /* sunrise amber */
+  --accent-soft: #f4dfc6;
+  --on-accent: #ffffff;
+  --sky-top: #dfe7e3;
+  --sky-low: #f6e6cf;
+  --ground: #c9d3c8;
+  --good: #3f7d5a;
+  --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111916; --surface: #18221f; --line: #2b3934; --fg: #e6ece8; --muted: #9aaba4;
+    --accent: #e9a253; --accent-soft: #3a2c1c; --on-accent: #1a120a;
+    --sky-top: #0f1a20; --sky-low: #2a2219; --ground: #1c2723; --good: #79c193;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111916; --surface: #18221f; --line: #2b3934; --fg: #e6ece8; --muted: #9aaba4;
+  --accent: #e9a253; --accent-soft: #3a2c1c; --on-accent: #1a120a;
+  --sky-top: #0f1a20; --sky-low: #2a2219; --ground: #1c2723; --good: #79c193;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.65; }
+.wrap {
+  max-width: 980px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 56px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; font-weight: 700; }
+h1 { font-size: 1.6rem; letter-spacing: .02em; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 14px; }
+.status { font-size: .8rem; color: var(--muted); }
+.status.warn { color: var(--accent); }
+
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; }
+nav.tabs button {
+  appearance: none; border: 0; background: none; color: var(--muted); font: inherit; font-weight: 500;
+  padding: 10px 14px; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+}
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+button.btn, .btn {
+  appearance: none; font: inherit; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  padding: 8px 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.ghost { background: transparent; }
+.btn:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+input[type="text"], textarea, select {
+  width: 100%; box-sizing: border-box; font: inherit; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px;
+}
+textarea { resize: vertical; min-height: 64px; }
+label.field { display: grid; gap: 4px; }
+label.field > span { font-size: .82rem; color: var(--muted); font-weight: 500; letter-spacing: .03em; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.stack { display: grid; gap: 14px; }
+[hidden] { display: none !important; }
+
+/* ---------- Session ---------- */
+.session-setup { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .session-setup { grid-template-columns: 1.3fr 1fr; align-items: start; } }
+.horizon {
+  position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%;
+  background: linear-gradient(var(--sky-top), var(--sky-low));
+}
+.horizon canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.horizon .overlay {
+  position: absolute; inset: auto 0 0 0; padding: 18px 20px 20px; display: grid; gap: 6px;
+}
+.phase-label { font-size: .75rem; letter-spacing: .14em; color: var(--accent); font-weight: 700; }
+.prompt {
+  font-family: var(--font-display); font-size: clamp(1.05rem, 2.6vw, 1.45rem); line-height: 1.6;
+  min-height: 3.2em; transition: opacity .8s ease;
+}
+.prompt.fade { opacity: 0; }
+.breath { position: absolute; top: 16px; left: 20px; font-size: .85rem; color: var(--muted); letter-spacing: .1em; }
+.timer { position: absolute; top: 14px; right: 20px; font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; }
+.progress-track { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.progress-track > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { appearance: none; border: 0; background: transparent; color: var(--fg); font: inherit; padding: 6px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); font-weight: 700; }
+.steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; font-size: .9rem; }
+.steps b { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
+.anchor { display: grid; gap: 12px; }
+.bridge { font-family: var(--font-display); font-size: 1.25rem; border-left: 3px solid var(--accent); padding-left: 14px; }
+
+/* ---------- Board ---------- */
+.board { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.wish {
+  border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--line);
+  display: grid; grid-template-rows: auto 1fr; cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 0;
+}
+.wish .cover { aspect-ratio: 16 / 10; background-size: cover; background-position: center; position: relative; }
+.wish .cover .area { position: absolute; top: 10px; left: 10px; background: var(--surface); color: var(--fg); font-size: .72rem; padding: 2px 10px; border-radius: 999px; letter-spacing: .05em; }
+.wish .cover .tag { position: absolute; top: 10px; right: 10px; background: var(--accent); color: var(--on-accent); font-size: .72rem; padding: 2px 10px; border-radius: 999px; }
+.wish .body { padding: 14px 16px 16px; display: grid; gap: 6px; align-content: start; }
+.wish .feeling { font-size: .85rem; color: var(--muted); }
+.wish .bridge-sm { font-family: var(--font-display); font-size: .95rem; }
+.meter { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.meter > i { display: block; height: 100%; background: var(--accent); }
+.empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 12px; }
+
+dialog {
+  border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--fg);
+  width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0;
+}
+dialog::backdrop { background: rgba(10, 16, 14, .45); }
+dialog form { padding: 20px; display: grid; gap: 14px; }
+.grid2 { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+.cover-preview { aspect-ratio: 16/6; border-radius: 10px; background-size: cover; background-position: center; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatches button[aria-pressed="true"] { border-color: var(--fg); }
+
+/* ---------- Today ---------- */
+.today { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .today { grid-template-columns: 1.4fr 1fr; align-items: start; } }
+.heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.heat i { aspect-ratio: 1; border-radius: 4px; background: var(--line); display: block; }
+.heat i.l1 { background: var(--accent-soft); }
+.heat i.l2 { background: color-mix(in srgb, var(--accent) 60%, var(--accent-soft)); }
+.heat i.l3 { background: var(--accent); }
+.heat i.today { outline: 2px solid var(--fg); outline-offset: 1px; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.stat b { display: block; font-family: var(--font-display); font-size: 1.8rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat span { font-size: .8rem; color: var(--muted); }
+.saved { font-size: .82rem; color: var(--good); }
+
+/* ---------- Beliefs ---------- */
+.belief { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.belief .old { text-decoration: line-through; text-decoration-color: var(--muted); color: var(--muted); }
+.belief .new { font-family: var(--font-display); font-size: 1.1rem; }
+.bars { display: grid; gap: 8px; }
+.bar { display: grid; grid-template-columns: 72px 1fr 44px; gap: 10px; align-items: center; font-size: .82rem; }
+.bar input[type="range"] { width: 100%; accent-color: var(--accent); }
+.bar output { font-variant-numeric: tabular-nums; text-align: right; }
+.evidence { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .9rem; }
+.evidence li { display: grid; grid-template-columns: 54px 1fr; gap: 8px; }
+.evidence time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .8rem; padding-top: 2px; }
+.questions { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem; color: var(--muted); }
+details summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt, .progress-track > i { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>晨光觀想室</h1>
+      <p class="muted small">每天幾分鐘：看見願望、走過過程、帶一個行動離開。</p>
+    </div>
+    <p class="status" id="status">連線中⋯</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-session" aria-selected="true" data-view="session">觀想</button>
+    <button role="tab" id="tab-board" aria-selected="false" data-view="board">願景板</button>
+    <button role="tab" id="tab-today" aria-selected="false" data-view="today">今日紀錄</button>
+    <button role="tab" id="tab-beliefs" aria-selected="false" data-view="beliefs">信念轉化</button>
+  </nav>
+
+  <!-- ================= SESSION ================= -->
+  <section id="view-session" class="stack">
+    <div class="session-setup">
+      <div class="stack">
+        <div class="horizon" id="horizon">
+          <canvas id="sky"></canvas>
+          <div class="breath" id="breath"></div>
+          <div class="timer" id="timer"></div>
+          <div class="overlay">
+            <div class="phase-label" id="phaseLabel">準備</div>
+            <div class="prompt" id="prompt">選一個願望，按下「開始觀想」。太陽會隨著你的觀想慢慢升起。</div>
+            <div class="progress-track"><i id="progress"></i></div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="startBtn" type="button">開始觀想</button>
+          <button class="btn" id="pauseBtn" type="button" hidden>暫停</button>
+          <button class="btn ghost" id="stopBtn" type="button" hidden>結束</button>
+          <button class="btn ghost" id="voiceBtn" type="button" aria-pressed="false" hidden>語音引導：關</button>
+        </div>
+      </div>
+
+      <div class="panel" id="setupPanel">
+        <label class="field"><span>今天要觀想的願望</span>
+          <select id="wishSelect"></select>
+        </label>
+        <div class="field">
+          <span class="muted small" style="font-weight:500">時間</span>
+          <div class="seg" id="durSeg" role="group" aria-label="觀想時間">
+            <button type="button" data-min="3" aria-pressed="false">3 分</button>
+            <button type="button" data-min="5" aria-pressed="true">5 分</button>
+            <button type="button" data-min="10" aria-pressed="false">10 分</button>
+          </div>
+        </div>
+        <ol class="steps" id="stepList"></ol>
+        <p class="muted small">流程依 WOOP 與「過程觀想」研究設計：先感受結果，再花更多時間預演你怎麼做到。</p>
+      </div>
+
+      <div class="panel anchor" id="anchorPanel" hidden>
+        <div class="phase-label">定錨</div>
+        <p class="bridge" id="anchorBridge"></p>
+        <label class="field"><span>今天我要做的一個最小行動</span>
+          <input type="text" id="anchorAction" placeholder="例如：改好履歷的第一段">
+        </label>
+        <div class="row">
+          <button class="btn primary" type="button" id="anchorSave">完成並記錄</button>
+          <span class="saved" id="anchorSaved" hidden>已記入今日紀錄</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BOARD ================= -->
+  <section id="view-board" class="stack" hidden>
+    <div class="row" style="justify-content:space-between">
+      <h2>願景板</h2>
+      <button class="btn primary" type="button" id="newWish">新增願望</button>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- ================= TODAY ================= -->
+  <section id="view-today" hidden>
+    <div class="today">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="todayTitle">今日紀錄</h2>
+          <span class="saved" id="daySaved" hidden>已儲存</span>
+        </div>
+        <div class="stack">
+          <label class="field"><span>感恩的三件事（越具體越好）</span>
+            <input type="text" id="g1" placeholder="例如：同事幫我帶了午餐">
+          </label>
+          <input type="text" id="g2" aria-label="感恩第二件事">
+          <input type="text" id="g3" aria-label="感恩第三件事">
+          <label class="field"><span>願望正在靠近的證據</span>
+            <input type="text" id="evidence" placeholder="一個回覆、一個新想法、一次沒有逃避">
+          </label>
+          <label class="field"><span>今天的小勝利</span>
+            <input type="text" id="win">
+          </label>
+          <label class="field"><span>今天要做的最小行動</span>
+            <input type="text" id="action">
+          </label>
+          <label class="field"><span>今天出現的舊信念，以及我如何回應</span>
+            <textarea id="oldBelief"></textarea>
+          </label>
+          <div class="row"><button class="btn primary" type="button" id="saveDay">儲存今日</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>練習軌跡</h3>
+        <div class="stats">
+          <div class="stat"><b id="streak">0</b><span>連續天數</span></div>
+          <div class="stat"><b id="sessions">0</b><span>觀想次數（35 天）</span></div>
+          <div class="stat"><b id="evCount">0</b><span>證據累積</span></div>
+        </div>
+        <div class="heat" id="heat" aria-label="最近 35 天的練習"></div>
+        <p class="muted small">顏色越深代表那天做得越多：有紀錄、有觀想、兩者都有。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BELIEFS ================= -->
+  <section id="view-beliefs" class="stack" hidden>
+    <div class="panel">
+      <h2>改寫一個限制性信念</h2>
+      <div class="grid2">
+        <label class="field"><span>舊信念</span>
+          <input type="text" id="bOld" placeholder="例如：我不夠好，升遷輪不到我">
+        </label>
+        <label class="field"><span>新的橋樑句</span>
+          <input type="text" id="bNew" placeholder="例如：我有實力，只是還沒讓人看見企圖心">
+        </label>
+      </div>
+      <details>
+        <summary>卡住了？用這六個問題檢驗舊信念</summary>
+        <ol class="questions">
+          <li>支持這個信念的真實證據是什麼？</li>
+          <li>反對它的證據呢？有沒有例外？</li>
+          <li>這個信念是誰教我的？</li>
+          <li>如果好朋友這樣想自己，我會對他說什麼？</li>
+          <li>相信它帶給我什麼保護？代價是什麼？</li>
+          <li>一個更平衡、也更有幫助的說法是什麼？</li>
+        </ol>
+      </details>
+      <div class="row"><button class="btn primary" type="button" id="addBelief">開始轉化</button></div>
+    </div>
+    <div class="stack" id="beliefList"></div>
+  </section>
+</div>
+
+<dialog id="wishDialog">
+  <form method="dialog" id="wishForm">
+    <h2 id="wishDialogTitle">新增願望</h2>
+    <div class="cover-preview" id="coverPreview"></div>
+    <div class="row">
+      <div class="swatches" id="swatches"></div>
+      <label class="btn" id="uploadLabel" hidden>上傳圖片<input type="file" id="wishImage" accept="image/*" hidden></label>
+      <span class="muted small" id="uploadNote"></span>
+    </div>
+    <div class="grid2">
+      <label class="field"><span>願望</span><input type="text" id="wTitle" required placeholder="三個月內換到喜歡的工作"></label>
+      <label class="field"><span>領域</span>
+        <select id="wArea">
+          <option>事業</option><option>財務</option><option>關係</option><option>健康</option>
+          <option>成長</option><option>家庭</option><option>玩樂</option><option>心靈</option>
+        </select>
+      </label>
+    </div>
+    <label class="field"><span>核心感受（實現後我會感覺）</span><input type="text" id="wFeeling" placeholder="自由、被重視"></label>
+    <label class="field"><span>最美好的結果（O）</span><textarea id="wOutcome" placeholder="每天早上期待上班，覺得自己的能力被看見"></textarea></label>
+    <div class="grid2">
+      <label class="field"><span>內在最大的阻礙（O）</span><input type="text" id="wObstacle" placeholder="怕被拒絕而拖延"></label>
+      <label class="field"><span>如果阻礙出現，那麼我就（P）</span><input type="text" id="wPlan" placeholder="只改一段，設 15 分鐘計時器"></label>
+    </div>
+    <label class="field"><span>橋樑句</span><input type="text" id="wBridge" placeholder="我每天都在變得更有能力"></label>
+    <label class="field"><span>進展 <output id="wProgOut">0%</output></span><input type="range" id="wProgress" min="0" max="100" step="5" value="0" style="accent-color:var(--accent)"></label>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn ghost" type="button" id="wDelete" hidden>刪除</button>
+      <span id="wConfirm" class="row" hidden><span class="small">確定刪除？</span><button class="btn" type="button" id="wDeleteYes">刪除</button><button class="btn ghost" type="button" id="wDeleteNo">取消</button></span>
+      <div class="row" style="margin-left:auto">
+        <button class="btn ghost" type="button" id="wCancel">取消</button>
+        <button class="btn primary" type="submit" id="wSave">儲存</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const dayKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const uid8 = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const SWATCHES = [
+  ["#f2c38b", "#c8701f"], ["#bfd8c6", "#3f7d5a"], ["#c9d6e8", "#4a6d94"],
+  ["#ebc7c0", "#a5544a"], ["#e3d9a8", "#8a7a2c"], ["#d6cbe3", "#6b5a8a"],
+];
+const SAMPLE = {
+  title: "三個月內換到喜歡的工作", area: "事業", feeling: "自由、被重視",
+  outcome: "每天早上期待上班，覺得自己的能力被看見。",
+  obstacle: "怕被拒絕，一直拖著不投履歷", plan: "先只改一段履歷，設 15 分鐘計時器",
+  bridge: "我每天都在變得更有能力", progress: 20, swatch: 0,
+};
+
+/* ---------------- Storage: private cloud (db) or this browser ---------------- */
+const store = {
+  mode: "loading", cols: { wishes: {}, days: {}, beliefs: {} }, base: null,
+  async put(col, id, data) {
+    this.cols[col] = { ...this.cols[col], [id]: data };
+    render();
+    if (this.mode === "cloud") await this.base.collection(col).doc(id).set(data);
+    else saveLocal();
+  },
+  async del(col, id) {
+    const next = { ...this.cols[col] }; delete next[id]; this.cols[col] = next;
+    render();
+    if (this.mode === "cloud") await this.base.collection(col).doc(id).delete();
+    else saveLocal();
+  },
+};
+const LKEY = "manifest-visualize-v1";
+function loadLocal() {
+  try { const raw = localStorage.getItem(LKEY); if (raw) Object.assign(store.cols, JSON.parse(raw)); } catch (_) {}
+}
+function saveLocal() { try { localStorage.setItem(LKEY, JSON.stringify(store.cols)); } catch (_) {} }
+function setStatus(text, warn) { const s = $("status"); s.textContent = text; s.classList.toggle("warn", !!warn); }
+
+let assets = null, tts = null;
+async function boot() {
+  render();
+  const c = window.claude;
+  if (!c || !c.use) return localMode();
+  const [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+  const id = user ? await user.id() : null;
+  if (!db || !id) return localMode();
+  store.mode = "cloud";
+  store.base = db.doc(`data/users/${id}/profile`);
+  setStatus("載入中⋯");
+  let pending = 3;
+  const timer = setTimeout(() => setStatus("暫時連不到雲端，顯示的資料可能不是最新", true), 10000);
+  for (const col of ["wishes", "days", "beliefs"]) {
+    let first = true;
+    store.base.collection(col).onSnapshot((snap) => {
+      const map = {};
+      snap.docs.forEach(d => { map[d.id] = d.data(); });
+      store.cols[col] = map;
+      if (first && !snap.metadata.fromCache) { first = false; if (--pending === 0) { clearTimeout(timer); setStatus("已同步・只有你看得到"); } }
+      render();
+    }, (e) => { clearTimeout(timer); setStatus("雲端儲存無法使用（" + e.code + "）", true); });
+  }
+  c.use("assets").then(a => { assets = a; $("uploadLabel").hidden = !a; });
+  c.use("tts").then(t => { tts = t; $("voiceBtn").hidden = !t; });
+}
+function localMode() {
+  store.mode = "local"; loadLocal();
+  setStatus("資料只存在這個瀏覽器", true);
+  render();
+}
+
+/* ---------------- Tabs ---------------- */
+const VIEWS = ["session", "board", "today", "beliefs"];
+function show(view) {
+  if (!VIEWS.includes(view)) view = "session";
+  VIEWS.forEach(v => {
+    $("view-" + v).hidden = v !== view;
+    $("tab-" + v).setAttribute("aria-selected", v === view ? "true" : "false");
+  });
+  if (location.hash.slice(1) !== view) history.replaceState(null, "", "#" + view);
+  if (view === "session") sizeCanvas();
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.view)));
+addEventListener("hashchange", () => show(location.hash.slice(1)));
+
+/* ---------------- Render ---------------- */
+function wishesSorted() {
+  return Object.entries(store.cols.wishes).map(([id, w]) => ({ id, ...w }))
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+}
+function coverStyle(w) {
+  if (w.imageUrl) return `background-image:url('${esc(w.imageUrl)}')`;
+  const [a, b] = SWATCHES[w.swatch ?? 0] || SWATCHES[0];
+  return `background-image:radial-gradient(circle at 70% 85%, ${a} 0 18%, transparent 19%), linear-gradient(160deg, ${a}, ${b})`;
+}
+function render() {
+  renderBoard(); renderSelect(); renderToday(); renderBeliefs();
+}
+function renderBoard() {
+  const list = wishesSorted();
+  const el = $("board");
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="empty" style="grid-column:1/-1">
+        <h3>還沒有願望</h3>
+        <p class="muted">每個願望一張卡：寫下它、它帶來的感受、會擋住你的阻礙，以及「如果⋯那麼⋯」計畫。下面是一張範例卡。</p>
+        <div class="board">${wishCard({ id: "", ...SAMPLE }, true)}</div>
+        <div class="row">
+          <button class="btn primary" type="button" data-act="new">寫下我的第一個願望</button>
+          <button class="btn" type="button" data-act="sample">用範例開始</button>
+        </div>
+      </div>`;
+    return;
+  }
+  el.innerHTML = list.map(w => wishCard(w)).join("");
+}
+function wishCard(w, sample) {
+  return `<button class="wish" type="button" ${sample ? 'data-act="sample"' : `data-id="${esc(w.id)}"`}>
+    <div class="cover" style="${coverStyle(w)}"><span class="area">${esc(w.area || "")}</span>${sample ? '<span class="tag">範例</span>' : ""}</div>
+    <div class="body">
+      <h3>${esc(w.title)}</h3>
+      ${w.feeling ? `<p class="feeling">感受：${esc(w.feeling)}</p>` : ""}
+      ${w.bridge ? `<p class="bridge-sm">「${esc(w.bridge)}」</p>` : ""}
+      <div class="meter" aria-label="進展 ${w.progress || 0}%"><i style="width:${w.progress || 0}%"></i></div>
+      <p class="muted small">進展 ${w.progress || 0}%${w.sessions ? `・觀想 ${w.sessions} 次` : ""}</p>
+    </div>
+  </button>`;
+}
+$("board").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act],[data-id]"); if (!b) return;
+  if (b.dataset.act === "new") openWish();
+  else if (b.dataset.act === "sample") addSample();
+  else if (b.dataset.id) openWish(b.dataset.id);
+});
+$("newWish").addEventListener("click", () => openWish());
+async function addSample() {
+  const id = uid8();
+  await safe(store.put("wishes", id, { ...SAMPLE, createdAt: new Date().toISOString() }));
+}
+function renderSelect() {
+  const sel = $("wishSelect"); const cur = sel.value;
+  const list = wishesSorted();
+  sel.innerHTML = list.length
+    ? list.map(w => `<option value="${esc(w.id)}">${esc(w.title)}</option>`).join("")
+    : `<option value="">（範例）${esc(SAMPLE.title)}</option>`;
+  if (list.some(w => w.id === cur)) sel.value = cur;
+}
+
+/* ---------------- Wish dialog ---------------- */
+let editing = null, editSwatch = 0, editImage = null;
+function openWish(id) {
+  editing = id || null;
+  const w = id ? store.cols.wishes[id] : {};
+  $("wishDialogTitle").textContent = id ? "編輯願望" : "新增願望";
+  $("wTitle").value = w.title || ""; $("wArea").value = w.area || "事業";
+  $("wFeeling").value = w.feeling || ""; $("wOutcome").value = w.outcome || "";
+  $("wObstacle").value = w.obstacle || ""; $("wPlan").value = w.plan || "";
+  $("wBridge").value = w.bridge || ""; $("wProgress").value = w.progress || 0;
+  $("wProgOut").textContent = (w.progress || 0) + "%";
+  editSwatch = w.swatch ?? 0; editImage = w.imageUrl ? { url: w.imageUrl, id: w.imageId } : null;
+  $("wDelete").hidden = !id; $("wConfirm").hidden = true; $("uploadNote").textContent = "";
+  paintCover(); $("wishDialog").showModal();
+}
+function paintCover() {
+  $("coverPreview").setAttribute("style", coverStyle({ swatch: editSwatch, imageUrl: editImage?.url }));
+  $("swatches").innerHTML = SWATCHES.map(([a, b], i) =>
+    `<button type="button" aria-label="色彩 ${i + 1}" aria-pressed="${!editImage && i === editSwatch}" data-i="${i}" style="background:linear-gradient(160deg,${a},${b})"></button>`).join("");
+}
+$("swatches").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-i]"); if (!b) return;
+  editSwatch = +b.dataset.i; editImage = null; paintCover();
+});
+$("wProgress").addEventListener("input", () => { $("wProgOut").textContent = $("wProgress").value + "%"; });
+$("wishImage").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f || !assets) return;
+  $("uploadNote").textContent = "上傳中⋯";
+  try {
+    const r = await assets.upload(f);
+    editImage = { url: r.url, id: r.id }; paintCover();
+    $("uploadNote").textContent = "圖片會存在這個頁面裡，分享頁面時對方也看得到。";
+  } catch (err) { $("uploadNote").textContent = "上傳失敗：" + (err.message || err.code); }
+  e.target.value = "";
+});
+$("wCancel").addEventListener("click", () => $("wishDialog").close());
+$("wDelete").addEventListener("click", () => { $("wConfirm").hidden = false; $("wDelete").hidden = true; });
+$("wDeleteNo").addEventListener("click", () => { $("wConfirm").hidden = true; $("wDelete").hidden = false; });
+$("wDeleteYes").addEventListener("click", async () => {
+  $("wishDialog").close(); await safe(store.del("wishes", editing));
+});
+$("wishForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = $("wTitle").value.trim(); if (!title) return;
+  const prev = editing ? store.cols.wishes[editing] : {};
+  const data = {
+    ...prev, title, area: $("wArea").value, feeling: $("wFeeling").value.trim(),
+    outcome: $("wOutcome").value.trim(), obstacle: $("wObstacle").value.trim(), plan: $("wPlan").value.trim(),
+    bridge: $("wBridge").value.trim(), progress: +$("wProgress").value, swatch: editSwatch,
+    imageUrl: editImage?.url || null, imageId: editImage?.id || null,
+    createdAt: prev.createdAt || new Date().toISOString(),
+  };
+  $("wishDialog").close();
+  await safe(store.put("wishes", editing || uid8(), data));
+});
+
+async function safe(p) {
+  try { await p; } catch (e) {
+    setStatus(e.code === "quota_exceeded" ? "儲存空間已滿，請刪除一些舊紀錄" : "儲存失敗，請再試一次", true);
+  }
+}
+
+/* ---------------- Today ---------------- */
+const DAY_FIELDS = ["g1", "g2", "g3", "evidence", "win", "action", "oldBelief"];
+let dayDirty = false;
+DAY_FIELDS.forEach(f => $(f).addEventListener("input", () => { dayDirty = true; $("daySaved").hidden = true; }));
+function renderToday() {
+  const k = dayKey(); const d = store.cols.days[k] || {};
+  const now = new Date();
+  $("todayTitle").textContent = `${now.getMonth() + 1} 月 ${now.getDate()} 日`;
+  if (!dayDirty) DAY_FIELDS.forEach(f => { if (document.activeElement !== $(f)) $(f).value = d[f] || ""; });
+  // heatmap: 35 days ending today, aligned so columns are weekdays starting Monday
+  const cells = []; let sess = 0, ev = 0;
+  Object.values(store.cols.days).forEach(x => { if (x.evidence) ev++; });
+  Object.values(store.cols.beliefs).forEach(b => { ev += (b.evidence || []).length; });
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const offset = (end.getDay() + 6) % 7; // Monday=0
+  const start = new Date(end); start.setDate(end.getDate() - (34 - (6 - offset)));
+  for (let i = 0; i < 35; i++) {
+    const dt = new Date(start); dt.setDate(start.getDate() + i);
+    const key = dayKey(dt); const x = store.cols.days[key];
+    if (dt > end) { cells.push(`<i style="visibility:hidden"></i>`); continue; }
+    const wrote = x && DAY_FIELDS.some(f => x[f]); const s = x?.sessions || 0; sess += s;
+    const lvl = wrote && s ? 3 : s ? 2 : wrote ? 1 : 0;
+    cells.push(`<i class="${lvl ? "l" + lvl : ""}${key === dayKey() ? " today" : ""}" title="${key}"></i>`);
+  }
+  $("heat").innerHTML = cells.join("");
+  let streak = 0; const cur = new Date(end);
+  if (!activeDay(dayKey(cur))) cur.setDate(cur.getDate() - 1);
+  while (activeDay(dayKey(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+  $("streak").textContent = streak; $("sessions").textContent = sess; $("evCount").textContent = ev;
+}
+function activeDay(k) { const x = store.cols.days[k]; return !!x && (x.sessions > 0 || DAY_FIELDS.some(f => x[f])); }
+$("saveDay").addEventListener("click", async () => {
+  const k = dayKey(); const prev = store.cols.days[k] || {};
+  const data = { ...prev }; DAY_FIELDS.forEach(f => { data[f] = $(f).value.trim(); });
+  dayDirty = false;
+  await safe(store.put("days", k, data));
+  $("daySaved").hidden = false;
+});
+
+/* ---------------- Beliefs ---------------- */
+function renderBeliefs() {
+  const list = Object.entries(store.cols.beliefs).map(([id, b]) => ({ id, ...b }))
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const el = $("beliefList");
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><h3>還沒有正在轉化的信念</h3>
+      <p class="muted">在上面寫下一個舊信念和新的橋樑句。之後每天替新信念記一個證據，並調整你對兩者的相信程度。不用一次變成 100%，舊信念從 80% 降到 50% 就足以開始行動。</p></div>`;
+    return;
+  }
+  if (el.contains(document.activeElement) && document.activeElement.type === "text") return;
+  el.innerHTML = list.map(b => `
+    <article class="belief" data-id="${esc(b.id)}">
+      <p class="old">${esc(b.old)}</p>
+      <p class="new">${esc(b.fresh)}</p>
+      <div class="bars">
+        <label class="bar"><span>舊信念</span><input type="range" min="0" max="100" step="5" value="${b.oldPct ?? 80}" data-k="oldPct" id="o-${esc(b.id)}"><output>${b.oldPct ?? 80}%</output></label>
+        <label class="bar"><span>新信念</span><input type="range" min="0" max="100" step="5" value="${b.freshPct ?? 20}" data-k="freshPct" id="n-${esc(b.id)}"><output>${b.freshPct ?? 20}%</output></label>
+      </div>
+      <ul class="evidence">${(b.evidence || []).slice().reverse().map(x =>
+        `<li><time>${esc((x.date || "").slice(5).replace("-", "/"))}</time><span>${esc(x.text)}</span></li>`).join("") ||
+        '<li><time></time><span class="muted">還沒有證據。今天發生的哪件小事支持新信念？</span></li>'}</ul>
+      <div class="row">
+        <input type="text" placeholder="新增一個支持新信念的證據" id="e-${esc(b.id)}" style="flex:1;min-width:180px">
+        <button class="btn" type="button" data-act="ev">記下</button>
+        <button class="btn ghost" type="button" data-act="del">移除</button>
+        <span class="row" data-confirm hidden><span class="small">確定移除？</span><button class="btn" type="button" data-act="delyes">移除</button></span>
+      </div>
+    </article>`).join("");
+}
+$("addBelief").addEventListener("click", async () => {
+  const old = $("bOld").value.trim(), fresh = $("bNew").value.trim();
+  if (!old || !fresh) { (old ? $("bNew") : $("bOld")).focus(); return; }
+  $("bOld").value = ""; $("bNew").value = "";
+  await safe(store.put("beliefs", uid8(), { old, fresh, oldPct: 80, freshPct: 20, evidence: [], createdAt: new Date().toISOString() }));
+});
+$("beliefList").addEventListener("input", (e) => {
+  if (e.target.type === "range") e.target.nextElementSibling.textContent = e.target.value + "%";
+});
+$("beliefList").addEventListener("change", async (e) => {
+  if (e.target.type !== "range") return;
+  const id = e.target.closest("[data-id]").dataset.id;
+  await safe(store.put("beliefs", id, { ...store.cols.beliefs[id], [e.target.dataset.k]: +e.target.value }));
+});
+$("beliefList").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const card = b.closest("[data-id]"); const id = card.dataset.id; const cur = store.cols.beliefs[id];
+  if (b.dataset.act === "ev") {
+    const inp = $("e-" + id); const text = inp.value.trim(); if (!text) return inp.focus();
+    inp.value = ""; inp.blur();
+    await safe(store.put("beliefs", id, { ...cur, evidence: [...(cur.evidence || []), { date: dayKey(), text }].slice(-200) }));
+  } else if (b.dataset.act === "del") { card.querySelector("[data-confirm]").hidden = false; b.hidden = true; }
+  else if (b.dataset.act === "delyes") await safe(store.del("beliefs", id));
+});
+$("beliefList").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.id?.startsWith("e-")) e.target.closest(".belief").querySelector('[data-act="ev"]').click();
+});
+
+/* ---------------- Session ---------------- */
+let minutes = 5;
+const PHASES = [
+  { key: "breathe", label: "安定呼吸", share: 0.2 },
+  { key: "result", label: "結果觀想", share: 0.3 },
+  { key: "process", label: "過程觀想", share: 0.5 },
+];
+function renderSteps() {
+  const total = minutes * 60; let acc = 0;
+  $("stepList").innerHTML = PHASES.map(p => {
+    const s = Math.round(total * p.share); const from = acc; acc += s;
+    return `<li><b>${fmt(from)}</b><span>${p.label}・${Math.round(s / 6) / 10} 分</span></li>`;
+  }).join("") + `<li><b>${fmt(total)}</b><span>定錨：念出橋樑句、決定一個行動</span></li>`;
+}
+function fmt(s) { return `${Math.floor(s / 60)}:${pad(Math.floor(s % 60))}`; }
+$("durSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-min]"); if (!b || run) return;
+  minutes = +b.dataset.min;
+  $("durSeg").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+  renderSteps();
+});
+function currentWish() {
+  const id = $("wishSelect").value;
+  return id && store.cols.wishes[id] ? { id, ...store.cols.wishes[id] } : { id: "", ...SAMPLE };
+}
+function scripts(w) {
+  return {
+    breathe: [
+      "找一個舒服的姿勢，輕輕閉上眼睛，或讓目光停在這顆太陽上。",
+      "跟著光吸氣四拍，停留四拍，再慢慢吐氣六拍。",
+      "讓肩膀放下來。今天的事，先放在一旁。",
+      "每一次吐氣，身體都更安定一點。",
+    ],
+    result: [
+      `想像「${w.title}」已經實現了。你在哪裡？身邊有誰？`,
+      "看清楚畫面裡的細節：光線、聲音、溫度、你穿著什麼。",
+      `感受那份${w.feeling || "喜悅"}，讓它在胸口慢慢擴大。`,
+      w.outcome || "在這一刻，你最想對自己說什麼？",
+    ],
+    process: [
+      "現在，回到今天。看見自己一步一步走向它。",
+      `你遇到了「${w.obstacle || "想放棄的念頭"}」。注意它出現時，身體哪裡變緊了。`,
+      "不用趕走它。對它點點頭：我看見你了。",
+      `然後看見自己這樣回應：${w.plan || "深呼吸，做下一個最小的步驟"}。`,
+      "想像今天要做的那件小事。你在哪裡做？幾點？第一個動作是什麼？",
+      "看見自己完成它，感受那一點點的踏實。",
+      "每一步都算數。你正在成為那個已經擁有它的人。",
+    ],
+  };
+}
+
+let run = null; // {start, pausedAt, elapsedPaused, wish, total, lines, lastLine}
+let voiceOn = false;
+$("voiceBtn").addEventListener("click", () => {
+  voiceOn = !voiceOn;
+  $("voiceBtn").setAttribute("aria-pressed", voiceOn); $("voiceBtn").textContent = "語音引導：" + (voiceOn ? "開" : "關");
+  if (!voiceOn && tts) tts.stop().catch(() => {});
+  else if (voiceOn && run) speak($("prompt").textContent);
+});
+function speak(text) {
+  if (!voiceOn || !tts) return;
+  tts.speak(text, { voice: "airy", rate: 0.85, language: "zh-TW" }).catch(err => {
+    if (err && err.code === "not_granted") { voiceOn = false; $("voiceBtn").hidden = true; }
+  });
+}
+let wakeLock = null;
+async function lockScreen() { try { wakeLock = await navigator.wakeLock?.request("screen"); } catch (_) {} }
+
+$("startBtn").addEventListener("click", () => {
+  const wish = currentWish();
+  run = { start: performance.now(), paused: false, pausedTotal: 0, pausedAt: 0, wish, total: minutes * 60, lastLine: "", lines: scripts(wish) };
+  $("startBtn").hidden = true; $("pauseBtn").hidden = false; $("stopBtn").hidden = false;
+  $("setupPanel").hidden = true; $("anchorPanel").hidden = true; $("anchorSaved").hidden = true;
+  lockScreen(); tick();
+});
+$("pauseBtn").addEventListener("click", () => {
+  if (!run) return;
+  if (run.paused) { run.pausedTotal += performance.now() - run.pausedAt; run.paused = false; $("pauseBtn").textContent = "暫停"; tts?.resume().catch(() => {}); }
+  else { run.paused = true; run.pausedAt = performance.now(); $("pauseBtn").textContent = "繼續"; tts?.pause().catch(() => {}); }
+});
+$("stopBtn").addEventListener("click", () => endSession(false));
+
+function elapsed() {
+  if (!run) return 0;
+  const now = run.paused ? run.pausedAt : performance.now();
+  return (now - run.start - run.pausedTotal) / 1000;
+}
+function phaseAt(t) {
+  let acc = 0;
+  for (const p of PHASES) {
+    const len = run.total * p.share;
+    if (t < acc + len) return { p, local: t - acc, len };
+    acc += len;
+  }
+  return null;
+}
+function setPrompt(text) {
+  if (text === run.lastLine) return;
+  run.lastLine = text;
+  const el = $("prompt");
+  if (reduceMotion) { el.textContent = text; speak(text); return; }
+  el.classList.add("fade");
+  setTimeout(() => { el.textContent = text; el.classList.remove("fade"); speak(text); }, 700);
+}
+let rafId = 0, lastSec = -1;
+function tick() {
+  if (!run) return;
+  const t = elapsed();
+  if (t >= run.total) return endSession(true);
+  const ph = phaseAt(t);
+  const lines = run.lines[ph.p.key];
+  const idx = Math.min(lines.length - 1, Math.floor(ph.local / (ph.len / lines.length)));
+  $("phaseLabel").textContent = ph.p.label;
+  setPrompt(lines[idx]);
+  const sec = Math.floor(t);
+  if (sec !== lastSec) {
+    lastSec = sec;
+    $("timer").textContent = fmt(run.total - t);
+    $("progress").style.width = (t / run.total * 100) + "%";
+  }
+  drawSky(t / run.total, t);
+  rafId = requestAnimationFrame(tick);
+}
+function endSession(completed) {
+  cancelAnimationFrame(rafId);
+  const wish = run?.wish; run = null; lastSec = -1;
+  try { wakeLock?.release(); } catch (_) {}
+  $("startBtn").hidden = false; $("pauseBtn").hidden = true; $("pauseBtn").textContent = "暫停"; $("stopBtn").hidden = true;
+  $("timer").textContent = ""; $("breath").textContent = "";
+  if (completed && wish) {
+    $("phaseLabel").textContent = "完成";
+    $("prompt").textContent = "慢慢睜開眼睛。把剛才的感受帶進今天。";
+    $("progress").style.width = "100%";
+    drawSky(1, 0);
+    $("anchorBridge").textContent = wish.bridge || "我願意一步一步走向它。";
+    $("anchorAction").value = "";
+    $("anchorPanel").hidden = false; $("setupPanel").hidden = true;
+    $("anchorPanel").dataset.wish = wish.id;
+    speak("慢慢睜開眼睛。對自己說：" + (wish.bridge || "我願意一步一步走向它。"));
+  } else {
+    if (tts) tts.stop().catch(() => {});
+    resetSky();
+  }
+}
+function resetSky() {
+  $("phaseLabel").textContent = "準備";
+  $("prompt").textContent = "選一個願望，按下「開始觀想」。太陽會隨著你的觀想慢慢升起。";
+  $("progress").style.width = "0";
+  $("setupPanel").hidden = false; $("anchorPanel").hidden = true;
+  drawSky(0, 0);
+}
+$("anchorSave").addEventListener("click", async () => {
+  const k = dayKey(); const prev = store.cols.days[k] || {};
+  const act = $("anchorAction").value.trim();
+  const data = { ...prev, sessions: (prev.sessions || 0) + 1 };
+  if (act) data.action = act;
+  dayDirty = false;
+  await safe(store.put("days", k, data));
+  const wid = $("anchorPanel").dataset.wish;
+  if (wid && store.cols.wishes[wid]) await safe(store.put("wishes", wid, { ...store.cols.wishes[wid], sessions: (store.cols.wishes[wid].sessions || 0) + 1 }));
+  $("anchorSaved").hidden = false;
+  setTimeout(resetSky, 1600);
+});
+
+/* ---------------- Sky canvas: the sun rises with the session ---------------- */
+const cv = $("sky"); const ctx = cv.getContext("2d");
+let W = 0, H = 0;
+function sizeCanvas() {
+  const r = cv.getBoundingClientRect(); if (!r.width) return;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (!run) drawSky(0, 0);
+}
+new ResizeObserver(sizeCanvas).observe($("horizon"));
+function token(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function breathAt(t) {
+  // 4 in, 4 hold, 6 out = 14s cycle
+  const c = t % 14;
+  if (c < 4) return { label: "吸氣", s: c / 4 };
+  if (c < 8) return { label: "停留", s: 1 };
+  return { label: "吐氣", s: 1 - (c - 8) / 6 };
+}
+function drawSky(progress, t) {
+  if (!W) return;
+  const accent = token("--accent"), ground = token("--ground"), soft = token("--accent-soft");
+  ctx.clearRect(0, 0, W, H);
+  const horizonY = H * 0.62;
+  const eased = 1 - Math.pow(1 - progress, 2);
+  const baseR = Math.min(W, H) * 0.11;
+  const b = run ? breathAt(t) : { label: "", s: 0.5 };
+  const r = baseR * (reduceMotion ? 1 : 0.85 + 0.3 * b.s);
+  const cx = W / 2, cy = horizonY + baseR * 1.1 - eased * (H * 0.42);
+  // glow
+  const g = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 4.2);
+  g.addColorStop(0, hexA(accent, 0.55)); g.addColorStop(0.4, hexA(accent, 0.16)); g.addColorStop(1, hexA(accent, 0));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // sun
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - r * 0.25, cy - r * 0.25, r * 0.45, 0, Math.PI * 2); ctx.fillStyle = hexA(soft, 0.35); ctx.fill();
+  // ground with gentle ridges
+  ctx.beginPath(); ctx.moveTo(0, horizonY);
+  for (let x = 0; x <= W; x += 8) ctx.lineTo(x, horizonY + Math.sin(x / W * Math.PI * 2.2) * H * 0.018 + Math.sin(x / W * 9) * H * 0.006);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fillStyle = ground; ctx.fill();
+  $("breath").textContent = run && !run.paused ? b.label : (run ? "暫停中" : "");
+}
+function hexA(hex, a) {
+  const h = hex.replace("#", ""); const n = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (!run) drawSky(0, 0); });
+new MutationObserver(() => { if (!run) drawSky(0, 0); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------------- Start ---------------- */
+renderSteps();
+show(location.hash.slice(1) || "session");
+boot();
+})();
+</script>
