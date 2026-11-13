@@ -171,6 +171,25 @@ dialog form { padding: 20px; display: grid; gap: 14px; }
 .questions { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: .9rem; color: var(--muted); }
 details summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
 
+/* ---------- Wins ---------- */
+.wins-top { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .wins-top { grid-template-columns: 1.2fr 1fr; align-items: start; } }
+.spot { border-radius: var(--radius); padding: 22px; display: grid; gap: 10px; background: linear-gradient(160deg, var(--accent-soft), var(--surface)); border: 1px solid var(--line); min-width: 0; }
+.spot .big { font-family: var(--font-display); font-size: 1.35rem; line-height: 1.5; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { appearance: none; font: inherit; font-size: .82rem; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.year { display: grid; grid-template-columns: 64px 1fr; gap: 14px; }
+.year > h3 { font-variant-numeric: tabular-nums; color: var(--accent); padding-top: 12px; }
+.year ol { list-style: none; margin: 0; padding: 0 0 0 16px; border-left: 2px solid var(--line); display: grid; gap: 10px; }
+.win { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.win::before { content: ""; position: absolute; left: -23px; top: 18px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+.win .meta { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; display: flex; gap: 10px; flex-wrap: wrap; }
+.win .proof { font-family: var(--font-display); }
+.win .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.win .acts button { font-size: .8rem; padding: 3px 12px; }
+.win.sample { border-style: dashed; }
+
 @media (prefers-reduced-motion: reduce) {
   .prompt, .progress-track > i { transition: none; }
 }
@@ -189,6 +208,7 @@ details summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
     <button role="tab" id="tab-session" aria-selected="true" data-view="session">觀想</button>
     <button role="tab" id="tab-board" aria-selected="false" data-view="board">願景板</button>
     <button role="tab" id="tab-today" aria-selected="false" data-view="today">今日紀錄</button>
+    <button role="tab" id="tab-wins" aria-selected="false" data-view="wins">成就庫</button>
     <button role="tab" id="tab-beliefs" aria-selected="false" data-view="beliefs">信念轉化</button>
   </nav>
 
@@ -295,6 +315,43 @@ details summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
     </div>
   </section>
 
+  <!-- ================= WINS ================= -->
+  <section id="view-wins" class="stack" hidden>
+    <div class="wins-top">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="winFormTitle">記下一個成就</h2>
+          <span class="saved" id="winSaved" hidden>已收進成就庫</span>
+        </div>
+        <label class="field"><span>我做到了什麼（大小都算）</span>
+          <input type="text" id="wnTitle" placeholder="例如：第一次在全公司面前簡報">
+        </label>
+        <div class="grid2">
+          <label class="field"><span>時間</span><input type="month" id="wnWhen" style="width:100%;box-sizing:border-box;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px"></label>
+          <label class="field"><span>領域</span>
+            <select id="wnArea">
+              <option>事業</option><option>學業</option><option>財務</option><option>關係</option><option>健康</option>
+              <option>成長</option><option>家庭</option><option>勇氣</option><option>其他</option>
+            </select>
+          </label>
+        </div>
+        <label class="field"><span>當時克服了什麼</span>
+          <input type="text" id="wnOvercame" placeholder="例如：前一晚緊張到睡不著，還是上台了">
+        </label>
+        <label class="field"><span>這證明了我是⋯</span>
+          <input type="text" id="wnProof" placeholder="例如：一個害怕也能行動的人">
+        </label>
+        <div class="row">
+          <button class="btn primary" type="button" id="wnSave">收進成就庫</button>
+          <button class="btn ghost" type="button" id="wnCancel" hidden>取消編輯</button>
+        </div>
+      </div>
+      <div class="spot" id="spot"></div>
+    </div>
+    <div class="chips" id="winChips" role="group" aria-label="依領域篩選"></div>
+    <div class="stack" id="winList"></div>
+  </section>
+
   <!-- ================= BELIEFS ================= -->
   <section id="view-beliefs" class="stack" hidden>
     <div class="panel">
@@ -384,7 +441,7 @@ const SAMPLE = {
 
 /* ---------------- Storage: private cloud (db) or this browser ---------------- */
 const store = {
-  mode: "loading", cols: { wishes: {}, days: {}, beliefs: {} }, base: null,
+  mode: "loading", cols: { wishes: {}, days: {}, beliefs: {}, wins: {} }, base: null,
   async put(col, id, data) {
     this.cols[col] = { ...this.cols[col], [id]: data };
     render();
@@ -416,9 +473,9 @@ async function boot() {
   store.mode = "cloud";
   store.base = db.doc(`data/users/${id}/profile`);
   setStatus("載入中⋯");
-  let pending = 3;
+  let pending = 4;
   const timer = setTimeout(() => setStatus("暫時連不到雲端，顯示的資料可能不是最新", true), 10000);
-  for (const col of ["wishes", "days", "beliefs"]) {
+  for (const col of ["wishes", "days", "beliefs", "wins"]) {
     let first = true;
     store.base.collection(col).onSnapshot((snap) => {
       const map = {};
@@ -438,7 +495,7 @@ function localMode() {
 }
 
 /* ---------------- Tabs ---------------- */
-const VIEWS = ["session", "board", "today", "beliefs"];
+const VIEWS = ["session", "board", "today", "wins", "beliefs"];
 function show(view) {
   if (!VIEWS.includes(view)) view = "session";
   VIEWS.forEach(v => {
@@ -462,7 +519,7 @@ function coverStyle(w) {
   return `background-image:radial-gradient(circle at 70% 85%, ${a} 0 18%, transparent 19%), linear-gradient(160deg, ${a}, ${b})`;
 }
 function render() {
-  renderBoard(); renderSelect(); renderToday(); renderBeliefs();
+  renderBoard(); renderSelect(); renderToday(); renderWins(); renderBeliefs();
 }
 function renderBoard() {
   const list = wishesSorted();
@@ -589,6 +646,7 @@ function renderToday() {
   const cells = []; let sess = 0, ev = 0;
   Object.values(store.cols.days).forEach(x => { if (x.evidence) ev++; });
   Object.values(store.cols.beliefs).forEach(b => { ev += (b.evidence || []).length; });
+  ev += Object.keys(store.cols.wins).length;
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const offset = (end.getDay() + 6) % 7; // Monday=0
   const start = new Date(end); start.setDate(end.getDate() - (34 - (6 - offset)));
@@ -614,6 +672,102 @@ $("saveDay").addEventListener("click", async () => {
   await safe(store.put("days", k, data));
   $("daySaved").hidden = false;
 });
+
+/* ---------------- Wins ---------------- */
+const SAMPLE_WINS = [
+  { title: "第一次在全公司面前簡報", when: "2024-06", area: "勇氣", overcame: "前一晚緊張到睡不著，還是上台了", proof: "一個害怕也能行動的人" },
+  { title: "存下第一筆十萬元", when: "2022-12", area: "財務", overcame: "每個月固定先存再花，撐了一年半", proof: "說到做到、能延遲享受的人" },
+];
+let winFilter = "全部", winEditing = null, spotId = null;
+function winsSorted() {
+  return Object.entries(store.cols.wins).map(([id, w]) => ({ id, ...w }))
+    .sort((a, b) => (b.when || "").localeCompare(a.when || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+}
+function whenLabel(w) { if (!w) return "時間未填"; const [y, m] = w.split("-"); return `${y} 年 ${+m} 月`; }
+function winItem(w, sample) {
+  return `<li class="win${sample ? " sample" : ""}" ${sample ? "" : `data-id="${esc(w.id)}"`}>
+    <div class="meta"><span>${esc(whenLabel(w.when))}</span><span>${esc(w.area || "")}</span>${sample ? "<span>範例</span>" : ""}</div>
+    <h3>${esc(w.title)}</h3>
+    ${w.overcame ? `<p class="muted small">克服：${esc(w.overcame)}</p>` : ""}
+    ${w.proof ? `<p class="proof">這證明我是${esc(w.proof)}</p>` : ""}
+    ${sample ? "" : `<div class="acts"><button class="btn ghost" type="button" data-act="edit">編輯</button><button class="btn ghost" type="button" data-act="del">刪除</button><span class="row" data-confirm hidden><span class="small">確定刪除？</span><button class="btn" type="button" data-act="delyes">刪除</button></span></div>`}
+  </li>`;
+}
+function timeline(list, sample) {
+  const groups = {};
+  list.forEach(w => { const y = (w.when || "").slice(0, 4) || "未填"; (groups[y] = groups[y] || []).push(w); });
+  return Object.keys(groups).sort().reverse().map(y =>
+    `<div class="year"><h3>${esc(y)}</h3><ol>${groups[y].map(w => winItem(w, sample)).join("")}</ol></div>`).join("");
+}
+function renderWins() {
+  const all = winsSorted();
+  // chips
+  const counts = {}; all.forEach(w => { counts[w.area] = (counts[w.area] || 0) + 1; });
+  if (winFilter !== "全部" && !counts[winFilter]) winFilter = "全部";
+  $("winChips").innerHTML = all.length ? [["全部", all.length], ...Object.entries(counts)].map(([k, n]) =>
+    `<button type="button" data-f="${esc(k)}" aria-pressed="${k === winFilter}">${esc(k)} ${n}</button>`).join("") : "";
+  // list
+  const list = winFilter === "全部" ? all : all.filter(w => w.area === winFilter);
+  $("winList").innerHTML = all.length ? timeline(list) : `
+    <div class="empty">
+      <h3>你的成就庫還是空的</h3>
+      <p class="muted">把已經做到的事寫下來：考過的試、撐過的難關、第一次鼓起勇氣的時刻。大腦容易記住失敗、忘記成功，這裡幫你把證據留下。下面是兩個範例。</p>
+      ${timeline(SAMPLE_WINS, true)}
+      <div class="row"><button class="btn" type="button" id="wnFocus">寫下我的第一個成就</button></div>
+    </div>`;
+  // spotlight
+  const pool = all.length ? all : null;
+  if (!pool) {
+    $("spot").innerHTML = `<div class="phase-label">回顧一個成就</div>
+      <p class="big">每記下一個成就，這裡就會隨機挑一個給你看。</p>
+      <p class="muted small">觀想時，也會在過程觀想的最後提醒你一個過去的成就。</p>`;
+  } else {
+    let w = pool.find(x => x.id === spotId);
+    if (!w) { w = pool[Math.floor(Math.random() * pool.length)]; spotId = w.id; }
+    $("spot").innerHTML = `<div class="phase-label">還記得嗎</div>
+      <p class="muted small">${esc(whenLabel(w.when))}・${esc(w.area || "")}</p>
+      <p class="big">你曾經${esc(w.title)}。</p>
+      ${w.proof ? `<p>這證明你是<strong>${esc(w.proof)}</strong>。</p>` : ""}
+      <div class="row"><span class="muted small">你已經累積 ${all.length} 個成就</span>
+      ${pool.length > 1 ? '<button class="btn" type="button" id="spotNext">換一個</button>' : ""}</div>`;
+  }
+}
+$("spot").addEventListener("click", (e) => {
+  if (e.target.id !== "spotNext") return;
+  const pool = winsSorted().filter(w => w.id !== spotId);
+  spotId = pool[Math.floor(Math.random() * pool.length)].id; renderWins();
+});
+$("winChips").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-f]"); if (!b) return; winFilter = b.dataset.f; renderWins();
+});
+function resetWinForm() {
+  winEditing = null; ["wnTitle", "wnOvercame", "wnProof"].forEach(f => $(f).value = "");
+  const d = new Date(); $("wnWhen").value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  $("winFormTitle").textContent = "記下一個成就"; $("wnSave").textContent = "收進成就庫"; $("wnCancel").hidden = true;
+}
+$("wnCancel").addEventListener("click", resetWinForm);
+$("wnSave").addEventListener("click", async () => {
+  const title = $("wnTitle").value.trim(); if (!title) return $("wnTitle").focus();
+  const id = winEditing || uid8(); const prev = store.cols.wins[id] || {};
+  const data = { ...prev, title, when: $("wnWhen").value, area: $("wnArea").value,
+    overcame: $("wnOvercame").value.trim(), proof: $("wnProof").value.trim(), createdAt: prev.createdAt || new Date().toISOString() };
+  resetWinForm(); spotId = id;
+  await safe(store.put("wins", id, data));
+  $("winSaved").hidden = false; setTimeout(() => { $("winSaved").hidden = true; }, 2000);
+});
+$("winList").addEventListener("click", async (e) => {
+  if (e.target.id === "wnFocus") return $("wnTitle").focus();
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const li = b.closest("[data-id]"); const id = li.dataset.id; const w = store.cols.wins[id];
+  if (b.dataset.act === "edit") {
+    winEditing = id; $("wnTitle").value = w.title || ""; $("wnWhen").value = w.when || ""; $("wnArea").value = w.area || "其他";
+    $("wnOvercame").value = w.overcame || ""; $("wnProof").value = w.proof || "";
+    $("winFormTitle").textContent = "編輯成就"; $("wnSave").textContent = "更新"; $("wnCancel").hidden = false;
+    $("wnTitle").focus(); $("view-wins").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+  } else if (b.dataset.act === "del") { li.querySelector("[data-confirm]").hidden = false; b.hidden = true; }
+  else if (b.dataset.act === "delyes") await safe(store.del("wins", id));
+});
+resetWinForm();
 
 /* ---------------- Beliefs ---------------- */
 function renderBeliefs() {
@@ -719,6 +873,7 @@ function scripts(w) {
       `然後看見自己這樣回應：${w.plan || "深呼吸，做下一個最小的步驟"}。`,
       "想像今天要做的那件小事。你在哪裡做？幾點？第一個動作是什麼？",
       "看見自己完成它，感受那一點點的踏實。",
+      ...(w.pastWin ? [`記得嗎？你曾經${w.pastWin.title}。那時的你做到了，現在的你也可以。`] : []),
       "每一步都算數。你正在成為那個已經擁有它的人。",
     ],
   };
@@ -743,6 +898,8 @@ async function lockScreen() { try { wakeLock = await navigator.wakeLock?.request
 
 $("startBtn").addEventListener("click", () => {
   const wish = currentWish();
+  const allWins = Object.values(store.cols.wins);
+  wish.pastWin = allWins.length ? allWins[Math.floor(Math.random() * allWins.length)] : null;
   run = { start: performance.now(), paused: false, pausedTotal: 0, pausedAt: 0, wish, total: minutes * 60, lastLine: "", lines: scripts(wish) };
   $("startBtn").hidden = true; $("pauseBtn").hidden = false; $("stopBtn").hidden = false;
   $("setupPanel").hidden = true; $("anchorPanel").hidden = true; $("anchorSaved").hidden = true;
