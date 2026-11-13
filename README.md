@@ -29,4 +29,4 @@
 
 ## 觀想 App
 
-[`app/visualize.html`](app/visualize.html)：「響指之後」，打一個響指，放下舊信念，切換到另一個宇宙裡已經做到的我。包含引導式觀想（太陽會隨著觀想升起）、願景板、今日紀錄、成就庫、信念轉化五個分頁。直接用瀏覽器開啟時，資料只存在該瀏覽器；在 claude.ai 上開啟時，資料存在雲端，只有你自己看得到。
+[`app/visualize.html`](app/visualize.html)：**Snapshift**（Snap. Let go. Shift into the you who already made it.）包含引導式觀想（太陽會隨著觀想升起）、願景板、今日紀錄、成就庫、信念轉化五個分頁。直接用瀏覽器開啟時，資料只存在該瀏覽器；在 claude.ai 上開啟時，資料存在雲端，只有你自己看得到。
